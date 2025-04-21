@@ -1,0 +1,91 @@
+plugins {
+  id 'war'
+  id 'java'
+  id 'jacoco'
+}
+
+group = 'web.backend'
+version = '1.0-SNAPSHOT'
+
+repositories {
+  mavenCentral()
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+  implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
+
+  implementation 'org.hibernate.orm:hibernate-core:6.3.1.Final'
+
+  implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.3'
+
+  implementation 'com.auth0:java-jwt:4.4.0'
+
+  compileOnly 'org.projectlombok:lombok:1.18.30'
+  annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+  implementation 'ch.qos.logback:logback-classic:1.5.13'
+
+  implementation 'at.favre.lib:bcrypt:0.10.2'
+
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
+
+  implementation 'com.fasterxml.jackson.core:jackson-core:2.18.2'
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.2'
+  implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.18.2'
+
+  implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
+  implementation 'org.seleniumhq.selenium:selenium-java:4.31.0'
+
+  testImplementation platform('org.junit:junit-bom:5.9.2') // JUnit BOM for version management
+  testImplementation 'org.junit.jupiter:junit-jupiter'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // Required for IDE support
+
+  testImplementation 'org.mockito:mockito-core:5.3.1'
+  testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
+  testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
+
+  testImplementation 'org.jboss.resteasy:resteasy-client:6.2.12.Final'
+  testImplementation 'org.jboss.resteasy:resteasy-core-spi:6.2.12.Final'
+  testImplementation 'org.jboss.resteasy:resteasy-core:6.2.12.Final'
+}
+
+war {
+  archiveFileName = "lab4-1.0-SNAPSHOT.war"
+}
+
+//tasks.register('myCompile', JavaCompile) {
+//  source = fileTree(dir: 'src/main/java', include: '**/*.java')  // исходники
+//  destinationDirectory = file('build/classes')  // куда складывать .class-файлы
+//  classpath = sourceSets.main.compileClasspath  // зависимости для компиляции
+//  sourceCompatibility = '17'  // версия Java (из gradle.properties)
+//  targetCompatibility = '17'
+//}
+
+
+tasks.register('hello') {
+  doLast {
+    println 'Hello world!'
+  }
+}
+
+
+jacoco {
+  toolVersion = "0.8.11" // Актуальная версия JaCoCo
+}
+
+test {
+  useJUnitPlatform()
+  finalizedBy jacocoTestReport // Автоматически генерировать отчет после тестов
+}
+
+jacocoTestReport {
+  dependsOn test // Сначала запускать тесты
+  reports {
+    html.required = true
+  }
+}
