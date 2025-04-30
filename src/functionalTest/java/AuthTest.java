@@ -27,7 +27,7 @@ public class AuthTest {
     public void setUp() {
         FirefoxOptions options = new FirefoxOptions();
         options.setBinary("/snap/firefox/current/usr/lib/firefox/firefox");
-        options.addArguments("--headless");
+        //options.addArguments("--headless");
         options.addArguments("--incognito");
         options.addArguments("--disable-extensions");
 

@@ -1,7 +1,11 @@
+import javax.tools.JavaCompiler
+import javax.tools.ToolProvider
+import java.security.MessageDigest
+
 plugins {
-  id 'war'
   id 'java'
   id 'jacoco'
+//  id 'war'
 }
 
 group = 'web.backend'
@@ -11,10 +15,10 @@ repositories {
   mavenCentral()
 }
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_17
-  targetCompatibility = JavaVersion.VERSION_17
-}
+//java {
+//  sourceCompatibility = JavaVersion.VERSION_17
+//  targetCompatibility = JavaVersion.VERSION_17
+//}
 
 dependencies {
   implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
@@ -54,17 +58,277 @@ dependencies {
   testImplementation 'org.jboss.resteasy:resteasy-core:6.2.12.Final'
 }
 
-war {
-  archiveFileName = "lab4-1.0-SNAPSHOT.war"
+def srcDir = file('src/main/java')
+def outputDir = file('build/classes/main')
+def warFile = file("./build/libs/lab4-1.0-SNAPSHOT.war")
+def wildflyPath = file('/home/grigory/itmo/web/wildfly-34.0.0.Final')
+def javaPath = "/usr/lib/jvm/java-17-openjdk-amd64"
+//war {
+//  archiveFileName = "lab4-1.0-SNAPSHOT.war"
+//}
+
+tasks.register('myCompile') {
+  description 'Компиляция'
+  group 'my-build'
+
+  doLast {
+    if (!srcDir.exists()) {
+      throw new GradleException("Исходная директория не найдена: ${srcDir}")
+    }
+
+    outputDir.mkdirs()
+
+    def javaFiles = fileTree(srcDir).include('**/*.java').files.toList()
+    if (javaFiles.isEmpty()) {
+      println "Нет Java-файлов для компиляции"
+      return
+    }
+
+    def classpath = configurations.compileClasspath.asPath
+    def javacPath = "${javaPath}/bin/javac"
+    def lombokPath = configurations.annotationProcessor.find { it.name.startsWith("lombok") }?.absolutePath
+
+    if (!lombokPath) {
+      throw new GradleException("Lombok не найден в annotationProcessor!")
+    }
+
+    def cmd = [javacPath,
+               "-d", outputDir.absolutePath,
+               "--release", "17",
+               "-sourcepath", srcDir.absolutePath,
+               "-processorpath", lombokPath,
+               "-cp", classpath]
+
+    javaFiles.each { file ->
+      cmd.add(file.absolutePath)
+    }
+
+    println "Выполняем компиляцию с командой: ${cmd.join(' ')}"
+
+    exec {
+      commandLine cmd
+    }
+
+    println "Компиляция успешно завершена!"
+  }
 }
 
-//tasks.register('myCompile', JavaCompile) {
-//  source = fileTree(dir: 'src/main/java', include: '**/*.java')  // исходники
-//  destinationDirectory = file('build/classes')  // куда складывать .class-файлы
-//  classpath = sourceSets.main.compileClasspath  // зависимости для компиляции
-//  sourceCompatibility = '17'  // версия Java (из gradle.properties)
-//  targetCompatibility = '17'
-//}
+tasks.register('buildJar') {
+  description 'Сборка JAR-архива'
+  group 'my-build'
+
+  dependsOn myCompile
+
+  def resourcesDir = file('src/main/resources')
+  def jarFile = file('build/libs/app.jar')
+  def classesDir = file('build/classes/main')
+  def manifest = file('build/tmp/jar/MANIFEST.MF')
+
+  doLast {
+    manifest.parentFile.mkdirs()
+    jarFile.parentFile.mkdirs()
+
+    manifest.text = """Manifest-Version: 1.0
+Main-Class: web.backend.lab4.Main
+
+"""
+
+    copy {
+      from resourcesDir
+      into classesDir
+    }
+
+    println manifest.absolutePath
+    exec {
+      commandLine 'jar', 'cmf',
+              manifest.absolutePath,
+              jarFile.absolutePath,
+              '-C', classesDir, '.'
+    }
+
+    copy {
+      from configurations.runtimeClasspath
+      into file('build/libs/lib')
+    }
+
+    println "JAR-архив успешно собран: ${jarFile.absolutePath}"
+    println "Зависимости скопированы в build/libs/lib/"
+  }
+}
+
+tasks.register('buildWar') {
+  description 'Сборка WAR-архива'
+  group 'my-build'
+
+  dependsOn myCompile
+
+  def classesDir = file('build/classes/main')
+  def webInfDir = file('build/tmp/war/WEB-INF')
+
+  doLast {
+    warFile.parentFile.mkdirs()
+    webInfDir.mkdirs()
+
+    // Классы
+    def webInfClasses = file("$webInfDir/classes")
+    webInfClasses.mkdirs()
+    copy {
+      from classesDir
+      into webInfClasses
+    }
+
+    // Ресурсы
+    def resourcesDir = file('src/main/resources/')
+    copy {
+      from resourcesDir
+      into webInfClasses
+    }
+
+    // Зависимости
+    def webInfLib = file("$webInfDir/lib")
+    webInfLib.mkdirs()
+    copy {
+      from configurations.runtimeClasspath
+      into webInfLib
+    }
+
+    exec {
+      workingDir warFile.parentFile
+      commandLine 'jar', 'cf',
+              warFile.absolutePath,
+              '-C', webInfDir.parentFile, 'WEB-INF',
+              '.'
+    }
+
+    println "WAR-архив успешно собран: ${warFile.absolutePath}"
+
+  }
+}
+
+// #########################################
+// ================ Wildfly ================
+// #########################################
+tasks.register('startWildfly') {
+  description 'Запуск Wildfly'
+  group 'wildfly'
+
+  doLast {
+
+    def buf = new ByteArrayOutputStream()
+    exec {
+      workingDir wildflyPath
+      commandLine './bin/jboss-cli.sh', '--connect', '--command=:read-attribute(name=server-state)'
+      standardOutput buf
+      ignoreExitValue true
+    }
+    if (buf.toString().contains('"result" => "running"')) {
+      println "WildFly уже запущен"
+      return
+    }
+
+    println "Запуск Wildfly..."
+    exec {
+      workingDir wildflyPath
+      commandLine 'sh', '-c', "./bin/standalone.sh > server.log 2>&1 &"
+      ignoreExitValue true
+    }
+
+    println "Проверка состояния..."
+    def attempts = 0
+    def isRunning = false
+    while (attempts < 10 && !isRunning){
+      buf.reset()
+      exec {
+        workingDir wildflyPath
+        commandLine './bin/jboss-cli.sh', '--connect', '--command=:read-attribute(name=server-state)'
+        standardOutput buf
+        ignoreExitValue true
+      }
+      if (buf.toString().contains('"result" => "running"')) {
+        isRunning = true
+      } else {
+        Thread.sleep(2000)
+      }
+    }
+    if (!isRunning) {
+      throw new GradleException("Не удалось запустить Wildfly")
+    }
+    println "Wildfly запущен"
+  }
+}
+
+tasks.register('stopWildfly') {
+  description 'Остановка Wildfly'
+  group 'wildfly'
+
+  doLast {
+    def cmd = ["${wildflyPath}/bin/jboss-cli.sh", "--connect", "--command=:shutdown"]
+    def buf = new ByteArrayOutputStream()
+    exec {
+      commandLine cmd
+      standardOutput buf
+      ignoreExitValue true
+    }
+    if (!buf.toString().contains('"outcome" => "success"')){
+      throw new GradleException("Не удалось остановить Wildfly")
+    }
+    println "Wildfly остановлен"
+  }
+}
+
+tasks.register('undeploy', Exec) {
+  description 'Удаление war-архива из Wildfly'
+  group 'wildfly'
+
+  commandLine wildflyPath.absolutePath + '/bin/jboss-cli.sh',
+              '--connect', "--command=undeploy ${warFile.name}"
+  ignoreExitValue true
+}
+
+tasks.register('deploy') {
+  dependsOn buildWar, startWildfly
+  description 'Деплой war-архива на Wildfly'
+  group 'wildfly'
+
+  doLast {
+    def deploymentName = warFile.name
+
+    // проверка
+    def buf = new ByteArrayOutputStream()
+    exec {
+      commandLine "${wildflyPath.absolutePath}/bin/jboss-cli.sh",
+              "--connect",
+              "--command=/deployment=${deploymentName}:read-resource"
+      standardOutput = buf
+      errorOutput = new ByteArrayOutputStream()
+      ignoreExitValue true
+    }
+    if (buf.toString().contains('"outcome" => "success"')) {
+      println "Приложение уже развернуто"
+      return
+    }
+
+    // деплой
+    exec {
+      commandLine "${wildflyPath}/bin/jboss-cli.sh",
+              "--connect",
+              "--command=deploy ${warFile.absolutePath}"
+    }
+
+    // проверка деплоя
+    buf.reset()
+    exec {
+      commandLine "${wildflyPath}/bin/jboss-cli.sh",
+              "--connect",
+              "--command=/deployment=${deploymentName}:read-attribute(name=status)"
+      standardOutput = buf
+    }
+    if (!buf.toString().contains('"result" => "OK"')) {
+      throw new GradleException("Ошибка развертывания!")
+    }
+  }
+}
+
 
 
 tasks.register('hello') {
@@ -73,18 +337,17 @@ tasks.register('hello') {
   }
 }
 
-
 jacoco {
-  toolVersion = "0.8.11" // Актуальная версия JaCoCo
+  toolVersion = "0.8.11"
 }
 
 test {
   useJUnitPlatform()
-  finalizedBy jacocoTestReport // Автоматически генерировать отчет после тестов
+  finalizedBy jacocoTestReport
 }
 
 jacocoTestReport {
-  dependsOn test // Сначала запускать тесты
+  dependsOn test
   reports {
     html.required = true
   }
