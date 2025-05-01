@@ -1,6 +1,3 @@
-package frontend;
-
-import frontend.pages.AuthPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,26 +11,26 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AuthTest {
 
     private WebDriver driver;
     private AuthPage authPage;
     private WebDriverWait wait;
-    private final String baseUrl = "http://localhost:5173";
 
     @BeforeEach
     public void setUp() {
         FirefoxOptions options = new FirefoxOptions();
         options.setBinary("/snap/firefox/current/usr/lib/firefox/firefox");
-        //options.addArguments("--headless");
+        options.addArguments("--headless");
         options.addArguments("--incognito");
         options.addArguments("--disable-extensions");
 
 
         driver = new FirefoxDriver(options);
         wait = new WebDriverWait(driver, Duration.ofSeconds(10)); // Устанавливаем WebDriverWait
+        String baseUrl = "http://localhost:5173";
         driver.get(baseUrl + "/register");
         authPage = new AuthPage(driver);
     }

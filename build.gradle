@@ -1,11 +1,6 @@
-import javax.tools.JavaCompiler
-import javax.tools.ToolProvider
-import java.security.MessageDigest
-
 plugins {
   id 'java'
   id 'jacoco'
-//  id 'war'
 }
 
 group = 'web.backend'
@@ -15,47 +10,14 @@ repositories {
   mavenCentral()
 }
 
-//java {
-//  sourceCompatibility = JavaVersion.VERSION_17
-//  targetCompatibility = JavaVersion.VERSION_17
-//}
+ext {
+  junitVersion = '5.9.2'
+  seleniumVersion = '4.31.0'
+}
 
-dependencies {
-  implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
-
-  implementation 'org.hibernate.orm:hibernate-core:6.3.1.Final'
-
-  implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.3'
-
-  implementation 'com.auth0:java-jwt:4.4.0'
-
-  compileOnly 'org.projectlombok:lombok:1.18.30'
-  annotationProcessor 'org.projectlombok:lombok:1.18.30'
-
-  implementation 'ch.qos.logback:logback-classic:1.5.13'
-
-  implementation 'at.favre.lib:bcrypt:0.10.2'
-
-  implementation 'org.apache.commons:commons-lang3:3.14.0'
-
-  implementation 'com.fasterxml.jackson.core:jackson-core:2.18.2'
-  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.2'
-  implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.18.2'
-
-  implementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
-  implementation 'org.seleniumhq.selenium:selenium-java:4.31.0'
-
-  testImplementation platform('org.junit:junit-bom:5.9.2') // JUnit BOM for version management
-  testImplementation 'org.junit.jupiter:junit-jupiter'
-  testRuntimeOnly 'org.junit.platform:junit-platform-launcher' // Required for IDE support
-
-  testImplementation 'org.mockito:mockito-core:5.3.1'
-  testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
-  testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
-
-  testImplementation 'org.jboss.resteasy:resteasy-client:6.2.12.Final'
-  testImplementation 'org.jboss.resteasy:resteasy-core-spi:6.2.12.Final'
-  testImplementation 'org.jboss.resteasy:resteasy-core:6.2.12.Final'
+configurations {
+  functionalTestImplementation.extendsFrom testImplementation
+  functionalTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 def srcDir = file('src/main/java')
@@ -63,13 +25,14 @@ def outputDir = file('build/classes/main')
 def warFile = file("./build/libs/lab4-1.0-SNAPSHOT.war")
 def wildflyPath = file('/home/grigory/itmo/web/wildfly-34.0.0.Final')
 def javaPath = "/usr/lib/jvm/java-17-openjdk-amd64"
-//war {
-//  archiveFileName = "lab4-1.0-SNAPSHOT.war"
-//}
+
+// ############################################
+// ============== My Build tasks ==============
+// ############################################
 
 tasks.register('myCompile') {
   description 'Компиляция'
-  group 'my-build'
+  group 'My Build tasks'
 
   doLast {
     if (!srcDir.exists()) {
@@ -115,7 +78,7 @@ tasks.register('myCompile') {
 
 tasks.register('buildJar') {
   description 'Сборка JAR-архива'
-  group 'my-build'
+  group 'My Build tasks'
 
   dependsOn myCompile
 
@@ -158,7 +121,7 @@ Main-Class: web.backend.lab4.Main
 
 tasks.register('buildWar') {
   description 'Сборка WAR-архива'
-  group 'my-build'
+  group 'My Build tasks'
 
   dependsOn myCompile
 
@@ -205,9 +168,27 @@ tasks.register('buildWar') {
   }
 }
 
-// #########################################
-// ================ Wildfly ================
-// #########################################
+tasks.register('myBuild') {
+  description 'Cборка приложения'
+  dependsOn myCompile, buildJar, buildWar
+  group 'My Build tasks'
+}
+
+tasks.register('myClean') {
+  description 'Удаление директории "build"'
+  group 'My Build tasks'
+
+  doLast {
+    def buildDir = file("./build")
+    buildDir.deleteDir()
+    println 'Директория build/ удалена'
+  }
+}
+
+// ###############################################
+// ================ Wildfly tasks ================
+// ###############################################
+
 tasks.register('startWildfly') {
   description 'Запуск Wildfly'
   group 'wildfly'
@@ -329,14 +310,89 @@ tasks.register('deploy') {
   }
 }
 
+// ########################################
+// ============== Func tests ==============
+// ########################################
 
-
-tasks.register('hello') {
-  doLast {
-    println 'Hello world!'
+sourceSets {
+  functionalTest {
+    java.srcDir file('src/functionalTest/java')
+    resources.srcDir file('src/functionalTest/resources')
+    compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+    runtimeClasspath += output + compileClasspath
   }
 }
 
+configurations {
+  functionalTestImplementation.extendsFrom testImplementation
+  functionalTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+tasks.register('functionalTest', Test) {
+  dependsOn deploy
+
+  description = 'Runs the functional tests.'
+  group = 'verification'
+  testClassesDirs = sourceSets.functionalTest.output.classesDirs
+  classpath = sourceSets.functionalTest.runtimeClasspath
+
+}
+
+
+//def functionalTestSrcDir = file('src/test/java/functionalTest')
+//def functionalClassesDir = file("build/classes/java/test")
+//
+//tasks.register('compileFunctionalTest', Exec) {
+//  description = "Компиляция функциональных тестов"
+//  group = "Functional tests"
+//
+//  def classpath = configurations.functionalTestImplementation.asPath
+//
+//  def srcFiles = fileTree(functionalTestSrcDir).filter { it.isFile() }.files
+//
+//  commandLine = [
+//          'javac',
+//          '-d', functionalClassesDir.absolutePath,
+//          '-cp', classpath,
+//          *srcFiles.collect { it.absolutePath }
+//  ]
+//}
+//
+//tasks.register('runFunctionalTest') {
+//  description = "Запуск функциональных тестов"
+//  group = "Functional tests"
+//
+//  dependsOn compileFunctionalTest
+//
+//  doLast {
+//
+//    def classpath = files(
+//            functionalClassesDir,
+//            configurations.functionalTestRuntimeOnly,
+//            configurations.functionalTestImplementation
+//    ).asPath
+//
+//    def cmd = [
+//            "java",
+//            "-cp", classpath,
+//            "org.junit.platform.console.ConsoleLauncher",
+//            "--scan-class-path", functionalClassesDir,
+//            "--details", "tree",
+//            "--details-theme", "ascii",
+//    ]
+//
+//    def res = exec {
+//      commandLine cmd as List<String>
+//      ignoreExitValue = true
+//    }
+//
+//
+//    println "Функциональные тесты выполнены"
+//  }
+//}
+
+
+// =========== Unit tests ===========
 jacoco {
   toolVersion = "0.8.11"
 }
@@ -346,9 +402,47 @@ test {
   finalizedBy jacocoTestReport
 }
 
+functionalTest {
+  useJUnitPlatform()
+}
+
 jacocoTestReport {
   dependsOn test
   reports {
     html.required = true
   }
+}
+
+
+dependencies {
+  implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
+  implementation 'org.hibernate.orm:hibernate-core:6.3.1.Final'
+  implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.3'
+  implementation 'com.auth0:java-jwt:4.4.0'
+  implementation 'ch.qos.logback:logback-classic:1.5.13'
+  implementation 'at.favre.lib:bcrypt:0.10.2'
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
+  implementation 'com.fasterxml.jackson.core:jackson-core:2.18.2'
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.18.2'
+  implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.18.2'
+
+  compileOnly 'org.projectlombok:lombok:1.18.30'
+  annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+  // для unit тестов
+  testImplementation 'org.jboss.resteasy:resteasy-client:6.2.12.Final'
+  testImplementation 'org.jboss.resteasy:resteasy-core-spi:6.2.12.Final'
+  testImplementation 'org.jboss.resteasy:resteasy-core:6.2.12.Final'
+
+  testImplementation 'org.mockito:mockito-core:5.3.1'
+  testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
+  testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
+
+
+  implementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+  testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+
+  testRuntimeOnly "org.junit.platform:junit-platform-console-standalone:1.9.2"
+  testImplementation "org.apiguardian:apiguardian-api:1.1.2"
+  testImplementation "org.seleniumhq.selenium:selenium-java:${seleniumVersion}"
 }
