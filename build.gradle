@@ -438,6 +438,8 @@ dependencies {
   testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
   testImplementation 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
 
+  testCompileOnly 'org.projectlombok:lombok:1.18.30'
+  testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 
   implementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")

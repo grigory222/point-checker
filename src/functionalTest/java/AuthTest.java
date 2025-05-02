@@ -14,7 +14,6 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AuthTest {
-
     private WebDriver driver;
     private AuthPage authPage;
     private WebDriverWait wait;
@@ -27,11 +26,9 @@ public class AuthTest {
         options.addArguments("--incognito");
         options.addArguments("--disable-extensions");
 
-
         driver = new FirefoxDriver(options);
-        wait = new WebDriverWait(driver, Duration.ofSeconds(10)); // Устанавливаем WebDriverWait
-        String baseUrl = "http://localhost:5173";
-        driver.get(baseUrl + "/register");
+        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        driver.get("http://localhost:5173/register");
         authPage = new AuthPage(driver);
     }
 
