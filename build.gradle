@@ -329,7 +329,7 @@ configurations {
 }
 
 tasks.register('functionalTest', Test) {
-  dependsOn deploy
+  //dependsOn deploy
 
   description = 'Runs the functional tests.'
   group = 'verification'

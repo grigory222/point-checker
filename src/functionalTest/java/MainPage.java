@@ -1,4 +1,5 @@
 import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.*;
 import java.time.Duration;
 import java.util.List;
@@ -71,7 +72,7 @@ public class MainPage {
 
     }
 
-
+    // MuiGrid
     public List<WebElement> getResultRows() {
         return wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
                 By.cssSelector(".MuiDataGrid-row")
@@ -95,10 +96,104 @@ public class MainPage {
         return row.findElement(By.cssSelector(String.format("[data-field='%s']", field))).getText();
     }
 
+    public void goToPage(int targetPage) {
+        String oldText;
+
+        WebElement paginationInfo = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(".MuiTablePagination-displayedRows")
+        ));
+
+        String currentText = paginationInfo.getText();
+        int currentPage = Integer.parseInt(currentText.split("–")[0]) / 5;
+        if (currentPage == targetPage) {
+            return;
+        }
+        while (currentPage != targetPage) {
+            if (currentPage < targetPage) {
+                WebElement nextButton = driver.findElement(
+                        By.cssSelector("button[aria-label='Go to next page']:not([disabled])")
+                );
+                oldText = paginationInfo.getText();
+                nextButton.click();
+                currentPage++;
+            } else {
+                WebElement prevButton = driver.findElement(
+                        By.cssSelector("button[aria-label='Go to previous page']:not([disabled])")
+                );
+                oldText = paginationInfo.getText();
+                prevButton.click();
+                currentPage--;
+            }
+
+
+            String finalOldText = oldText;
+            wait.until(driver -> !driver.findElement(
+                    By.cssSelector(".MuiTablePagination-displayedRows")
+            ).getText().equals(finalOldText));
+        }
+    }
+
+
+
     public void submitForm() {
         submitButton().click();
         wait.until(ExpectedConditions.invisibilityOfElementLocated(
                 By.cssSelector(".MuiCircularProgress-root")
         ));
     }
+
+    public boolean isYErrorDisplayed() {
+        try {
+            WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.cssSelector("#\\:rb\\:-helper-text")
+            ));
+            return error.isDisplayed() &&
+                    error.getText().equals("Значение Y должно быть в диапазоне [-5;3]");
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
+    public boolean isYInputHighlightedAsError() {
+        try {
+            WebElement yInputWrapper = driver.findElement(By.cssSelector(".MuiInputBase-root.Mui-error"));
+            return yInputWrapper.isDisplayed();
+        } catch (NoSuchElementException e) {
+            return false;
+        }
+    }
+
+    public WebElement getAlert() {
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(
+                By.cssSelector(".MuiAlert-standardError")
+        ));
+    }
+
+    public void clickOnCanvas(int x, int y) {
+        WebElement canvas = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.id("myCanvas")
+        ));
+
+        new Actions(driver)
+                .moveToElement(canvas, x, -y)
+                .click()
+                .perform();
+    }
+
+//    public void clickOnCanvas(int x, int y) {
+//        WebElement canvas = wait.until(ExpectedConditions.presenceOfElementLocated(
+//                By.id("myCanvas")
+//        ));
+//
+//        // Просто используем JavaScript для клика
+//        String script =
+//                "var canvas = arguments[0];" +
+//                        "var rect = canvas.getBoundingClientRect();" +
+//                        "var x = rect.left + rect.width/2 + arguments[1];" +
+//                        "var y = rect.top + rect.height/2 - arguments[2];" +
+//                        "var evt = new MouseEvent('click', {clientX: x, clientY: y});" +
+//                        "canvas.dispatchEvent(evt);";
+//
+//        ((JavascriptExecutor) driver).executeScript(script, canvas, x, y);
+//    }
 }
