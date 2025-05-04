@@ -1,6 +1,5 @@
 plugins {
   id 'java'
-  id 'jacoco'
 }
 
 group = 'web.backend'
@@ -13,11 +12,6 @@ repositories {
 ext {
   junitVersion = '5.9.2'
   seleniumVersion = '4.31.0'
-}
-
-configurations {
-  functionalTestImplementation.extendsFrom testImplementation
-  functionalTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 def srcDir = file('src/main/java')
@@ -66,7 +60,7 @@ tasks.register('myCompile') {
       cmd.add(file.absolutePath)
     }
 
-    println "Выполняем компиляцию с командой: ${cmd.join(' ')}"
+    println "Компиляция..."
 
     exec {
       commandLine cmd
@@ -172,6 +166,7 @@ tasks.register('myBuild') {
   description 'Cборка приложения'
   dependsOn myCompile, buildJar, buildWar
   group 'My Build tasks'
+  finalizedBy music
 }
 
 tasks.register('myClean') {
@@ -310,9 +305,11 @@ tasks.register('deploy') {
   }
 }
 
-// ########################################
-// ============== Func tests ==============
-// ########################################
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+  }
+}
 
 sourceSets {
   functionalTest {
@@ -321,98 +318,78 @@ sourceSets {
     compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
     runtimeClasspath += output + compileClasspath
   }
+  unitTest {
+    java.srcDir file('src/test/java')
+    resources.srcDir file('src/test/resources')
+    compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+    runtimeClasspath += output + compileClasspath
+  }
 }
 
 configurations {
   functionalTestImplementation.extendsFrom testImplementation
   functionalTestRuntimeOnly.extendsFrom testRuntimeOnly
+
+  unitTestImplementation.extendsFrom testImplementation
+  unitTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 tasks.register('functionalTest', Test) {
-  //dependsOn deploy
+  dependsOn deploy
 
-  description = 'Runs the functional tests.'
-  group = 'verification'
+  description = 'Запуск функциональных тестов'
+  group = 'My Tests'
   testClassesDirs = sourceSets.functionalTest.output.classesDirs
   classpath = sourceSets.functionalTest.runtimeClasspath
 
-}
-
-
-//def functionalTestSrcDir = file('src/test/java/functionalTest')
-//def functionalClassesDir = file("build/classes/java/test")
-//
-//tasks.register('compileFunctionalTest', Exec) {
-//  description = "Компиляция функциональных тестов"
-//  group = "Functional tests"
-//
-//  def classpath = configurations.functionalTestImplementation.asPath
-//
-//  def srcFiles = fileTree(functionalTestSrcDir).filter { it.isFile() }.files
-//
-//  commandLine = [
-//          'javac',
-//          '-d', functionalClassesDir.absolutePath,
-//          '-cp', classpath,
-//          *srcFiles.collect { it.absolutePath }
-//  ]
-//}
-//
-//tasks.register('runFunctionalTest') {
-//  description = "Запуск функциональных тестов"
-//  group = "Functional tests"
-//
-//  dependsOn compileFunctionalTest
-//
-//  doLast {
-//
-//    def classpath = files(
-//            functionalClassesDir,
-//            configurations.functionalTestRuntimeOnly,
-//            configurations.functionalTestImplementation
-//    ).asPath
-//
-//    def cmd = [
-//            "java",
-//            "-cp", classpath,
-//            "org.junit.platform.console.ConsoleLauncher",
-//            "--scan-class-path", functionalClassesDir,
-//            "--details", "tree",
-//            "--details-theme", "ascii",
-//    ]
-//
-//    def res = exec {
-//      commandLine cmd as List<String>
-//      ignoreExitValue = true
-//    }
-//
-//
-//    println "Функциональные тесты выполнены"
-//  }
-//}
-
-
-// =========== Unit tests ===========
-jacoco {
-  toolVersion = "0.8.11"
-}
-
-test {
   useJUnitPlatform()
-  finalizedBy jacocoTestReport
-}
-
-functionalTest {
-  useJUnitPlatform()
-}
-
-jacocoTestReport {
-  dependsOn test
-  reports {
-    html.required = true
+  testLogging {
+    events "passed", "failed", "skipped"
+    showStandardStreams = true
   }
 }
 
+tasks.register('unitTest', Test) {
+  description = 'Запуск модульных тестов'
+  group = 'My Tests'
+  testClassesDirs = sourceSets.unitTest.output.classesDirs
+  classpath = sourceSets.unitTest.runtimeClasspath
+
+  useJUnitPlatform()
+  testLogging {
+    events "passed", "failed", "skipped"
+    showStandardStreams = true
+  }
+}
+
+tasks.register('env') {
+  dependsOn build
+  doLast {
+    def props = new Properties()
+    file("env.properties").withInputStream { props.load(it) }
+
+    def javaExecutable = javaToolchains.launcherFor {
+      languageVersion = JavaLanguageVersion.of(props.getProperty("java.version", "17"))
+    }.get().executablePath.asFile.absolutePath
+
+    javaexec {
+      executable = javaExecutable
+      jvmArgs = props.getProperty("jvm.args", "").split(' ').findAll { it }
+      mainClass = props.getProperty("main.class")
+      classpath = sourceSets.main.runtimeClasspath
+      args props.getProperty("app.args", "").split(' ').findAll { it }
+    }
+  }
+}
+
+tasks.register('music') {
+  dependsOn build
+  doLast {
+    exec {
+      commandLine 'ffplay', '-autoexit', '-nodisp', '-loglevel', 'quiet', './music/track.mp3'
+    }
+  }
+}
 
 dependencies {
   implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'

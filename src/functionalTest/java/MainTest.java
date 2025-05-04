@@ -30,7 +30,6 @@ public class MainTest {
 
         authorize(driver);
 
-        System.out.println(driver.getCurrentUrl());
     }
 
     private void authorize(WebDriver driver) {
@@ -231,6 +230,14 @@ public class MainTest {
         wait.until(ExpectedConditions.invisibilityOfElementLocated(
                 By.cssSelector(".MuiAlert-standardError")
         ));
+    }
+
+    @Test
+    public void testLogout(){
+        mainPage.logout();
+
+        wait.until(ExpectedConditions.urlContains("/login"));
+        assertTrue(Objects.requireNonNull(driver.getCurrentUrl()).contains("/login"), "Должен быть редирект на /login");
     }
 
     private String getPaginationText() {

@@ -28,6 +28,10 @@ public class AuthPage {
         return driver.findElement(By.xpath("//button[contains(text(), '" + label + "')]"));
     }
 
+    private WebElement getMainButton() {
+        return driver.findElement(By.xpath("//a[contains(text(), 'Главная')]"));
+    }
+
     private WebElement getAvatarIcon() {
         return driver.findElement(By.xpath("//div[contains(@class, 'MuiAvatar-root')]"));
     }
@@ -44,6 +48,10 @@ public class AuthPage {
 
     public void logout(){
         getLogoutButton().click();
+    }
+
+    public void goToMainPage(){
+        getMainButton().click();
     }
 
     public void enterUsername(String username) {
@@ -92,6 +100,7 @@ public class AuthPage {
     public boolean isErrorWrongSymbolsUsernameVisible() {
         return !driver.findElements(By.xpath("//div[contains(@class, 'MuiAlert') and contains(text(),'signup.arg0.username: Username must be alphanumeric with underscores')]")).isEmpty();
     }
+
 
 
 }

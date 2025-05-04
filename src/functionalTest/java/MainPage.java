@@ -83,7 +83,7 @@ public class MainPage {
         List<WebElement> rows = getResultRows();
         if (rows.isEmpty()) return "";
 
-        WebElement lastRow = rows.getLast();
+        WebElement lastRow = rows.get(rows.size() - 1);
         return String.format("X: %s, Y: %s, R: %s, Result: %s",
                 getCellValue(lastRow, "x"),
                 getCellValue(lastRow, "y"),
@@ -178,6 +178,20 @@ public class MainPage {
                 .moveToElement(canvas, x, -y)
                 .click()
                 .perform();
+    }
+
+    private WebElement getAvatarIcon() {
+        return driver.findElement(By.xpath("//div[contains(@class, 'MuiAvatar-root')]"));
+    }
+
+    private WebElement getLogoutButton() {
+        getAvatarIcon().click();
+        return driver.findElement(By.xpath("//a[contains(text(), 'Выход')]"));
+
+    }
+
+    public void logout(){
+        getLogoutButton().click();
     }
 
 //    public void clickOnCanvas(int x, int y) {

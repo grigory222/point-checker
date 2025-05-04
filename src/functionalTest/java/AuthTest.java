@@ -2,6 +2,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class AuthTest {
     private WebDriver driver;
@@ -130,5 +132,24 @@ public class AuthTest {
 
         wait.until(ExpectedConditions.urlContains("/login"));
         assertTrue(Objects.requireNonNull(driver.getCurrentUrl()).contains("/login"), "Должен быть переход на страницу входа");
+    }
+
+    @Test
+    public void testTryGoToMain(){
+        authPage.goToMainPage();
+
+        try {
+            wait.until(ExpectedConditions.urlContains("/login"));
+        } catch (TimeoutException e) {
+            if (Objects.requireNonNull(driver.getCurrentUrl()).contains("/main")) {
+                wait.until(ExpectedConditions.urlContains("/login"));
+            } else {
+                fail("Ожидался редирект на /login, но текущий URL: " + driver.getCurrentUrl());
+            }
+        }
+
+        assertTrue(Objects.requireNonNull(driver.getCurrentUrl()).contains("/login"),
+                "После попытки перехода на /main без авторизации должен быть редирект на /login");
+
     }
 }
