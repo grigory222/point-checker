@@ -194,20 +194,4 @@ public class MainPage {
         getLogoutButton().click();
     }
 
-//    public void clickOnCanvas(int x, int y) {
-//        WebElement canvas = wait.until(ExpectedConditions.presenceOfElementLocated(
-//                By.id("myCanvas")
-//        ));
-//
-//        // Просто используем JavaScript для клика
-//        String script =
-//                "var canvas = arguments[0];" +
-//                        "var rect = canvas.getBoundingClientRect();" +
-//                        "var x = rect.left + rect.width/2 + arguments[1];" +
-//                        "var y = rect.top + rect.height/2 - arguments[2];" +
-//                        "var evt = new MouseEvent('click', {clientX: x, clientY: y});" +
-//                        "canvas.dispatchEvent(evt);";
-//
-//        ((JavascriptExecutor) driver).executeScript(script, canvas, x, y);
-//    }
 }

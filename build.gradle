@@ -42,11 +42,12 @@ tasks.register('myCompile') {
     }
 
     def classpath = configurations.compileClasspath.asPath
-    def javacPath = "${javaPath}/bin/javac"
+    // def javacPath = "${javaPath}/bin/javac"
+    def javacPath = "javac"
     def lombokPath = configurations.annotationProcessor.find { it.name.startsWith("lombok") }?.absolutePath
 
     if (!lombokPath) {
-      throw new GradleException("Lombok не найден в annotationProcessor!")
+      throw new GradleException("Lombok не найден в annotationProcessor")
     }
 
     def cmd = [javacPath,
@@ -126,7 +127,6 @@ tasks.register('buildWar') {
     warFile.parentFile.mkdirs()
     webInfDir.mkdirs()
 
-    // Классы
     def webInfClasses = file("$webInfDir/classes")
     webInfClasses.mkdirs()
     copy {
@@ -134,14 +134,12 @@ tasks.register('buildWar') {
       into webInfClasses
     }
 
-    // Ресурсы
     def resourcesDir = file('src/main/resources/')
     copy {
       from resourcesDir
       into webInfClasses
     }
 
-    // Зависимости
     def webInfLib = file("$webInfDir/lib")
     webInfLib.mkdirs()
     copy {
@@ -390,6 +388,7 @@ tasks.register('music') {
     }
   }
 }
+
 
 dependencies {
   implementation 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
