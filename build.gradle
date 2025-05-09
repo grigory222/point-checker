@@ -164,7 +164,7 @@ tasks.register('myBuild') {
   description 'Cборка приложения'
   dependsOn myCompile, buildJar, buildWar
   group 'My Build tasks'
-  finalizedBy music
+  //finalizedBy music
 }
 
 tasks.register('myClean') {
