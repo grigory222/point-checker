@@ -1,3 +1,5 @@
+![Build](https://github.com/grigory222/point-checker/actions/workflows/gradle.yml/badge.svg)
+
 # Point Checker
 
 Пет‑проект, выполненный в рамках курсов «Веб‑программирование» и «Основы программной инженерии».  
